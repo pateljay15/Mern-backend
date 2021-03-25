@@ -6,6 +6,7 @@ const port = process.env.PORT || 8000
 
 require('./db/conn')
 const Register = require('./models/register')
+const bcrypt = require('bcryptjs')
 
 const static_path = path.join(__dirname, "../public")
 const template_path = path.join(__dirname, "../templates/views")
@@ -61,6 +62,50 @@ app.post("/register", async (req, res) => {
 app.get("/login", (req, res) => {
     res.render("login")
 })
+
+app.post('/login', async (req, res) => {
+    try {
+        const email = req.body.email
+        const password = req.body.password
+        //Returns one document that satisfies query criteria on the collection or view
+        const useremail = await Register.findOne({email: email})
+        // res.status(200).send(useremail)
+        // console.log(useremail)
+        // it will simply compare the password which user writes and the password stored in the database
+        const isMatch = await bcrypt.compare(password, useremail.password)
+
+        if(isMatch){
+            res.status(200).render("index")
+        }else{
+            // Dont exposes to many things about your backend server
+            // just only send response as invalid login credentials so hacker cant understand
+            // what things are wrong or right
+            res.status(400).send("Invalid login credentials")
+        }
+    } catch (error) {
+        res.status(400).send("Invalid login credentials")
+    }
+
+
+})
+
+
+//bcrypt usecase:
+
+// const bcrypt = require('bcryptjs')
+
+// const securePassword = async (password) => {
+
+//     const passwordHash = await bcrypt.hash(password, 10)
+//     console.log(passwordHash)
+
+//     const passwordMatch = await bcrypt.compare(password, passwordHash)
+//     console.log(passwordMatch)
+//     //$2a$10$Oz8n653mZsBDWPz.Z8DH8OImmTwGD3GfvI265ZPmpK/n9Sec0R/rO
+//     //true
+// }
+
+// securePassword("jay@123")
 
 app.listen(port, () => {
     console.log(`listening to port no ${port}`)

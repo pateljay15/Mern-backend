@@ -12,7 +12,23 @@
   </head>
   <body>
     {{>navbar}}
-    <h1>Login page</h1>
+    <h1 class="text-center my-3">Login page</h1>
+    <div class="container">
+    <form action="/login" method="POST">
+      <div class="mb-3">
+        <label for="exampleFormControlInput1" class="form-label">Email address</label>
+        <input type="email" class="form-control"  placeholder="name@example.com" name="email">
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Password</label>
+        <input type="text" class="form-control" placeholder="Password" name="password">
+      </div>
+      
+      <div class="col-auto">
+        <button type="submit" value="submit" class="btn btn-warning">Submit</button>
+      </div>
+    </form>
+  </div>
     <!-- Optional JavaScript; choose one of the two! -->
 
     <!-- Option 1: Bootstrap Bundle with Popper -->
