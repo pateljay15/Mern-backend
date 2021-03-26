@@ -1,3 +1,4 @@
+require('dotenv').config()
 const express = require('express')
 const app = express()
 const hbs = require('hbs')
@@ -7,6 +8,8 @@ const port = process.env.PORT || 8000
 require('./db/conn')
 const Register = require('./models/register')
 const bcrypt = require('bcryptjs')
+const cookieParser = require('cookie-parser')
+const auth = require('./middleware/auth')
 
 const static_path = path.join(__dirname, "../public")
 const template_path = path.join(__dirname, "../templates/views")
@@ -16,14 +19,45 @@ app.use(express.json())
 // it basically tells the express that whatever data i m passing through 
 // form , i should get that data , u cant show that undefined
 app.use(express.urlencoded({extended:false}))
+app.use(cookieParser())
 
 app.use(express.static(static_path))
 app.set("view engine", "hbs")
 app.set("views", template_path)
 hbs.registerPartials(partials_path)
 
+// console.log(process.env.SECRET_KEY)
+
 app.get("/", (req, res) => {
     res.render("index")
+})
+
+app.get("/secret", auth, (req, res) => {
+    // console.log(`The JWT is1: ${req.cookies.JWT}`)
+    res.render("secret")
+})
+
+app.get("/logout", auth, async (req, res) => {
+    try {
+        console.log(req.token)
+        // To Logout from one particular devices
+        // To delete one token from database
+        req.user.tokens = req.user.tokens.filter((token) => {
+            return token.token != req.token
+        })
+        
+        // Netflix like logout
+        // To Logout from every devices
+        // To delete all tokens from the array
+        //req.user.tokens = []
+        
+        console.log(req.user)
+        res.clearCookie("JWT")
+        await req.user.save()
+        res.render("login")
+    } catch (error) {
+        res.status(500).send(error)
+    }
 })
 
 app.get("/register", (req, res) => {
@@ -34,7 +68,7 @@ app.post("/register", async (req, res) => {
     try {
         const password = req.body.password
         const confirmpassword = req.body.confirmpassword
-        console.log(req.body)
+        // console.log(req.body)
         if(password === confirmpassword){
             // you can use this also but make sure the name attribute is same as the fields name in the
             // database below.
@@ -49,6 +83,25 @@ app.post("/register", async (req, res) => {
                 phone: req.body.phone,
                 age: req.body.age,
             })
+
+            const token = await registerEmployee.generateAuthToken()
+
+            // The res.cookie() function is used to set the cookie name to value.
+            // The value parameter may be a string or object converted to JSON
+
+            // HttpOnly is a flag that can be included in a Set-Cookie response header. 
+            // The presence of this flag will tell browsers to
+            // not allow client side script access to the cookie (if the browser supports it)
+
+            // Syntax:
+            // res.cookie(name, value, [options])
+
+            res.cookie("JWT", token, {
+                expires: new Date(Date.now() + 600000),
+                httpOnly: true
+            })
+
+
             const register = await registerEmployee.save()
             res.status(201).render("index")
         }else{
@@ -73,6 +126,13 @@ app.post('/login', async (req, res) => {
         // console.log(useremail)
         // it will simply compare the password which user writes and the password stored in the database
         const isMatch = await bcrypt.compare(password, useremail.password)
+
+        const token = await useremail.generateAuthToken()
+
+        res.cookie("JWT", token, {
+            expires: new Date(Date.now() + 600000),
+            httpOnly: true
+        })
 
         if(isMatch){
             res.status(200).render("index")
@@ -106,6 +166,23 @@ app.post('/login', async (req, res) => {
 // }
 
 // securePassword("jay@123")
+
+
+// JsonWebToken JWT usecase:
+
+// const jwt = require('jsonwebtoken')
+
+// const createToken = async () => {
+//     const token = await jwt.sign({_id: "605c66e1531304282c0595c7"}, "myfjfjkkskfjfjfjkksksskkjjjfjjfjjfllslllsf", {
+//         expiresIn: "2 minutes"
+//     })
+//     console.log(token)
+
+//     const userVer = await jwt.verify(token, "myfjfjkkskfjfjfjkksksskkjjjfjjfjjfllslllsf")
+//     console.log(userVer)
+// }
+
+// createToken()
 
 app.listen(port, () => {
     console.log(`listening to port no ${port}`)

@@ -1,5 +1,6 @@
 const mongoose = require('mongoose')
 const bcrypt = require('bcryptjs')
+const jwt = require('jsonwebtoken')
 
 const employeeSchema = new mongoose.Schema({
     firstname: {
@@ -36,7 +37,29 @@ const employeeSchema = new mongoose.Schema({
         type: String,
         required: true
     },
+    tokens:[{
+        token:{
+            type: String,
+            required: true
+        }
+    }]
 })
+
+// We use .env file to hide our backend private data from outside world
+employeeSchema.methods.generateAuthToken = async function(){
+    try {
+        console.log(this._id)
+        const token = await jwt.sign({_id:this._id.toString()}, process.env.SECRET_KEY)
+        this.tokens = this.tokens.concat({token})
+        // console.log(token)
+        const check = await this.save()
+        // console.log(check)
+        return token
+    } catch (error) {
+        res.send("The error part" + error)
+        console.log("The error part" + error)
+    }
+}
 
 // It is a middleware which gets every data before storing into the database and do some work on that
 // and then perform the save() function on it.
@@ -52,11 +75,11 @@ const employeeSchema = new mongoose.Schema({
 employeeSchema.pre("save", async function(next){
 
     if(this.isModified("password")){
-        console.log(`The current password is ${this.password}`)
+        // console.log(`The current password is ${this.password}`)
         this.password = await bcrypt.hash(this.password, 10)
-        console.log(`The current password is ${this.password}`)
+        // console.log(`The current password is ${this.password}`)
         
-        this.confirmpassword = undefined
+        this.confirmpassword = await bcrypt.hash(this.password, 10)
     }
     next()
 })
